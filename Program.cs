@@ -18,7 +18,11 @@ using (var conn = new SqlConnection(connectionString))
     //ReadView(conn);
     //OneToOne(conn);
     //OneToMany(conn);
-    QueryMultiple(conn);
+    //QueryMultiple(conn);
+    //SelectIn(conn);
+    //Like(conn, "api");
+    Transaction(conn);
+    ListCategories(conn);
 }
 
 void ListCategories(SqlConnection connection)
@@ -321,4 +325,83 @@ void QueryMultiple(SqlConnection connection)
             Console.WriteLine(item.Title);
         }
     }
+}
+
+void SelectIn(SqlConnection connection)
+{
+    var query = @"SELECT * FROM [Career] WHERE [Id] IN @Id";
+
+    var items = connection.Query<Career>(query, new
+    {
+        Id = new[] {
+            "E6730D1C-6870-4DF3-AE68-438624E04C72",
+            "4327AC7E-963B-4893-9F31-9A3B28A4E72B"
+        }
+    });
+
+    foreach (var item in items)
+    {
+        Console.WriteLine($"{item.Id} - {item.Title}");
+    }
+}
+
+void Like(SqlConnection connection, string term)
+{
+    var query = @"SELECT * FROM [Course] WHERE [Title] LIKE @exp";
+
+    var items = connection.Query<Course>(query, new
+    {
+        exp = $"%{term}%"
+    });
+
+    foreach (var item in items)
+    {
+        Console.WriteLine($"{item.Id} - {item.Title}");
+    }
+}
+
+void Transaction(SqlConnection connection)
+{
+    var category = new Category();
+    category.Id = Guid.NewGuid();
+    category.Title = "Amazon AWS";
+    category.Url = "amazon";
+    category.Description = "Categoria destinada a serviços do AWS";
+    category.Order = 8;
+    category.Summary = "AWS Cloud";
+    category.Featured = false;
+
+    var insertSQL = @"INSERT INTO 
+                [Category] 
+                VALUES (
+                @Id,
+                @Title, 
+                @Url, 
+                @Summary, 
+                @Order, 
+                @Description, 
+                @Featured)";
+
+    connection.Open();
+    using (var transaction = connection.BeginTransaction())
+    {
+
+        var rows = connection.Execute(insertSQL, new
+        {
+            category.Id,
+            category.Title,
+            category.Url,
+            category.Summary,
+            category.Order,
+            category.Description,
+            category.Featured
+        }, transaction);
+
+        //transaction.Commit();
+        transaction.Rollback();
+
+        Console.WriteLine($"{rows} linhas inseridas");
+    }
+
+
 }
